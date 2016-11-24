@@ -4,15 +4,20 @@
 #
 #-------------------------------------------------
 
-QT       += core gui
-
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+QT       += widgets
+#greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET = xmleditor
 TEMPLATE = app
 
 
-SOURCES += main.cpp\
-        mainwindow.cpp
+SOURCES += main.cpp \
+    textedit.cpp
 
-HEADERS  += mainwindow.h
+HEADERS  += \
+    textedit.h
+
+RESOURCES += \
+    textedit.qrc
+
+FORMS +=

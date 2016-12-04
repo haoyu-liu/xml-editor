@@ -152,6 +152,7 @@ void TextEdit::closeEvent(QCloseEvent *e)
 
 void TextEdit::fileOpen()
 {
+    domdelete(fileName);
     QFileDialog fileDialog(this, tr("Open File..."));
     fileDialog.setAcceptMode(QFileDialog::AcceptOpen);
     fileDialog.setFileMode(QFileDialog::ExistingFile);

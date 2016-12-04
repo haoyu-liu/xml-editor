@@ -16,7 +16,9 @@
 #include <QMessageBox>
 #include <QtCore>
 #include <QClipboard>
-
+#include <QHBoxLayout>
+#include <QDomDocument>
+#include <QXmlStreamWriter>
 
 #include "textedit.h"
 
@@ -25,7 +27,12 @@ TextEdit::TextEdit(QWidget *parent):QMainWindow(parent)
 {
     setWindowTitle(QCoreApplication::applicationName());
     textEdit=new QTextEdit(this);
-    setCentralWidget(textEdit);
+    treeWidget=new QTreeWidget(this);
+    QStringList headers;
+    headers<<"Nodes"<<"Properties"<<"Content";
+    treeWidget->setHeaderLabels(headers);
+    window = new QWidget(this);
+    setCentralWidget(window);
     setToolButtonStyle(Qt::ToolButtonFollowStyle);
     setupFileActions();
     setupEditActions();
@@ -50,10 +57,16 @@ TextEdit::TextEdit(QWidget *parent):QMainWindow(parent)
     actionSave->setEnabled(textEdit->document()->isRedoAvailable());
     textEdit->setFocus();
     setCurrentFileName(QString());
+   //布局
+    layout = new QHBoxLayout;
+    layout->addWidget(textEdit);
+    layout->addWidget(treeWidget);
+    window->setLayout(layout);
 }
 
 bool TextEdit::load(const QString &f)
 {
+    domload(f);
     if (!QFile::exists(f))
         return false;
     QFile file(f);
@@ -70,6 +83,52 @@ bool TextEdit::load(const QString &f)
     return true;
 }
 
+bool TextEdit::domload(const QString &f)
+{
+    QFile file(f);
+    QString errorStr;
+    int errorLine;
+    int errorColumn;
+
+    QDomDocument doc;
+    if (!doc.setContent(&file, false, &errorStr, &errorLine,
+                        &errorColumn)) {
+        QMessageBox::critical(this, tr("Error"),
+                              tr("Parse error at line %1, column %2: %3")
+                              .arg(errorLine).arg(errorColumn).arg(errorStr));
+        return false;
+    }
+    QDomElement root = doc.documentElement();
+    parseElement(root,treeWidget->invisibleRootItem());
+    return true;
+}
+
+bool TextEdit::domdelete(const QString &f)
+{
+    QFile file(f);
+    QString errorStr;
+    int errorLine;
+    int errorColumn;
+
+    QDomDocument doc;
+    if (!doc.setContent(&file, false, &errorStr, &errorLine,
+                        &errorColumn)) {
+        QMessageBox::critical(this, tr("Error"),
+                              tr("Parse error at line %1, column %2: %3")
+                              .arg(errorLine).arg(errorColumn).arg(errorStr));
+        return false;
+    }
+    QDomElement root = doc.documentElement();
+    QDomNodeList list = doc.childNodes();
+    for(int i =0;i < list.count();i++)
+    {
+        root.removeChild(list.at(i));
+    }
+    treeWidget->clear();
+    return true;
+}
+
+
 void TextEdit::fileNew()
 {
     if(maybeSave())
@@ -82,9 +141,13 @@ void TextEdit::fileNew()
 void TextEdit::closeEvent(QCloseEvent *e)
 {
     if (maybeSave())
+    {
         e->accept();
+    }
     else
+    {
         e->ignore();
+    }
 }
 
 void TextEdit::fileOpen()
@@ -112,17 +175,19 @@ bool TextEdit::fileSave()
     {
         return fileSaveAs();
     }
+    domdelete(fileName);
     QTextDocumentWriter writer(fileName);
+    writer.setFormat("plaintext");
     bool success = writer.write(textEdit->document());
     if (success) {
         textEdit->document()->setModified(false);
         statusBar()->showMessage(tr("Wrote \"%1\"").arg(QDir::toNativeSeparators(fileName)));
+        domload(fileName);
     } else {
         statusBar()->showMessage(tr("Could not write to file \"%1\"")
                                  .arg(QDir::toNativeSeparators(fileName)));
     }
     return success;
-
 
 }
 
@@ -133,7 +198,7 @@ bool TextEdit::fileSaveAs()
     QStringList mimeTypes;
     mimeTypes << "text/xml" << "text/plain";
     fileDialog.setMimeTypeFilters(mimeTypes);
-    fileDialog.setDefaultSuffix("odt");
+    fileDialog.setDefaultSuffix("xml");
     if (fileDialog.exec() != QDialog::Accepted)
     {
         return false;
@@ -229,7 +294,6 @@ void TextEdit::setupEditActions()
     }
 }
 
-
 bool TextEdit::maybeSave()
 {
     if(!textEdit->document()->isModified())
@@ -270,7 +334,44 @@ void TextEdit::setCurrentFileName(const QString &fileName)
     setWindowModified(false);
 }
 
+void TextEdit::parseElement(const QDomElement &element,QTreeWidgetItem *parent)
+{
+    QString tagName = element.tagName();
+    QDomNodeList children = element.childNodes();
 
+    QDomNamedNodeMap map = element.attributes();
 
+    parent->setText(0,tagName);
 
+    if(!map.isEmpty())
+    {
+        QString attrs;
+        for(int i =0;i<map.count();i++)
+        {
+            QDomAttr attr = map.item(i).toAttr();
+            QString attrName = attr.name();
+            QString attrValue = attr.value();
+            attrs+=" "+attrName+"=\""+attrValue+"\", ";
+        }
+        parent->setText(1,attrs);
+    }
 
+    //parse child nodes
+    for(int i = 0;i < children.length();i++)
+    {
+        QDomNode node = children.item(i);
+        int nodeType = node.nodeType();
+        if(nodeType == QDomNode::ElementNode)
+        {
+            QTreeWidgetItem *item = new QTreeWidgetItem(parent);
+            //auto item = make_shared<QTreeWidgetItem>(parent);
+            parseElement(node.toElement(),item);
+        }else if(nodeType==QDomNode::TextNode)
+        {
+            parent->setText(2,node.nodeValue());
+        }else if(nodeType==QDomNode::CommentNode)
+        {
+
+        }
+    }
+}

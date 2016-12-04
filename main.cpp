@@ -1,22 +1,3 @@
-//[Document]
-//  <- [Element]
-//  <- DocumentType
-//  <- ProcessingInstrument
-//  <- Comment
-//[Attr]
-//  <- [EntityReference]
-//  <- Text
-//[DocumentFragment] | [Element] | [EntityReference] | [Entity]
-//  <- [Element]
-//  <- [EntityReference]
-//  <- Text
-//  <- CDATASection
-//  <- ProcessingInstrument
-//  <- Comment
-
-
-
-
 #include <QApplication>
 #include <QCoreApplication>
 #include <QRect>

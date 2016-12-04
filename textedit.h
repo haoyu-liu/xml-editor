@@ -5,6 +5,9 @@
 #include <QMap>
 #include <QPointer>
 #include <QTextEdit>
+#include <QTreeWidget>
+#include <QDomElement>
+#include <QHBoxLayout>
 
 
 QT_BEGIN_NAMESPACE
@@ -18,6 +21,10 @@ public:
     TextEdit(QWidget *parent=0);
 
     bool load(const QString &f);
+
+    bool domload(const QString &f);
+
+    bool domdelete(const QString &f);
 
 public slots:
     void fileNew();
@@ -38,6 +45,7 @@ private:
     void setupEditActions();
     bool maybeSave();
     void setCurrentFileName(const QString &filename);
+    void parseElement(const QDomElement &element,QTreeWidgetItem *parent);
 
     //Actions
     QAction *actionSave;
@@ -50,7 +58,9 @@ private:
     QToolBar *bar;
     QString fileName;
     QTextEdit *textEdit;
-
+    QTreeWidget *treeWidget; 
+    QWidget *window;
+    QHBoxLayout *layout;
 };
 
 #endif // TEXTEDIT_H
